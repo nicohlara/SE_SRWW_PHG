@@ -9,7 +9,8 @@
 #SBATCH --mail-type=END
 #SBATCH --mail-type=FAIL
 
-to_impute=keyfiles/exome_impute.txt
+#to_impute=keyfiles/exome_impute.txt
+to_impute=keyfiles/exome_round2_GBS_impute.txt
 
 export _JAVA_OPTIONS="-Xmx350G"
 
@@ -21,7 +22,7 @@ cd /90daydata/guedira_seq_map/nico/pangenome_multichrom
 #phg=phg/bin/phg
 phg=../phgv2_v2.4/bin/phg
 
-
+###imputation prep
 #${phg} list-samples \
 #	--db-path vcf_dbs \
 #	--data-set hvcf \
@@ -47,111 +48,44 @@ index_prefix=soft7_index
 #	--index-file-prefix ${index_prefix} \
 #	--threads 8
 
-read_mapping=output/read_mappings
-#mkdir ${read_mapping}
-
-#${phg} map-reads \
-#	--hvcf-dir ${hvcf_dir} \
-#	--index ${index_dir}/${index_prefix}.fmd \
-#	--key-file ${to_impute} \
-#	--output-dir ${read_mapping}
-
-imputed_hvcf=output/imputed_hvcf
-#mkdir ${imputed_hvcf}
-
-#${phg} find-paths \
-#	--path-keyfile ${read_mapping}/pathKeyFile.txt \
-#	--hvcf-dir ${hvcf_dir} \
-#	--reference-genome output/updated_assemblies/Ref.fa \
-#	--path-type haploid \
-#	--output-dir ${imputed_hvcf}
-
-#for vcf in ${imputed_hvcf}/*; do
-#	bgzip $vcf
-#	bcftools index ${vcf}.gz
-#done
-
-#${phg} load-vcf \
-#	--vcf-dir ${imputed_hvcf} \
-#	--db-path vcf_dbs \
-#	--threads 10
-
-
 imputed_snp=output/imputed_snp
 #mkdir ${imputed_snp}
+
+read_mapping=output/read_mappings_exome2_gbs
+mkdir ${read_mapping}
+
+${phg} map-reads \
+	--hvcf-dir ${hvcf_dir} \
+	--index ${index_dir}/${index_prefix}.fmd \
+	--key-file ${to_impute} \
+	--output-dir ${read_mapping}
+
+imputed_hvcf=output/imputed_hvcf_exome2_gbs
+mkdir ${imputed_hvcf}
+
+${phg} find-paths \
+	--path-keyfile ${read_mapping}/pathKeyFile.txt \
+	--hvcf-dir ${hvcf_dir} \
+	--reference-genome output/updated_assemblies/Ref.fa \
+	--path-type haploid \
+	--output-dir ${imputed_hvcf}
+
+for vcf in ${imputed_hvcf}/*; do
+	bgzip $vcf
+	bcftools index ${vcf}.gz
+done
+
+${phg} load-vcf \
+	--vcf-dir ${imputed_hvcf} \
+	--db-path vcf_dbs \
+	--threads 10
+
+
+imputed_snp=output/imputed_snp_exome2_gbs
+mkdir ${imputed_snp}
 
 ${phg} hvcf2gvcf \
 	--hvcf-dir ${imputed_hvcf} \
 	--db-path vcf_dbs \
 	--reference-file output/updated_assemblies/Ref.fa \
 	--output-dir ${imputed_snp}
-
-
-
-#${phg} find-paths \
-#    --path-keyfile output/read_mappings/pathKeyFile.txt \
-#    --hvcf-dir ${imputed_hvcf} \
-#    --reference-genome output/pangenome_index/pangenome.fa \
-#    --path-type haploid \
-#    --output-dir ${imputed_vcf}
-
-
-imputed_hvcf=output/imputed_hvcf
-#mkdir ${imputed_hvcf}
-
-#${phg} find-paths \
-#	--path-keyfile ${mapped_dir}/pathKeyFile.txt \
-#	--hvcf-dir ${hvcf_dir} \
-#	--reference-genome output/updated_assemblies/Ref.fa \
-#	--path-type haploid \
-#	--output-dir ${imputed_hvcf}
-
-imputed_maf=output/imputed_hvcf_maf
-#mkdir ${imputed_maf}
-
-#${phg} create-maf-vcf \
-#	--db-path vcf_dbs \
-#	--bed output/all_ranges.bed \
-#	--reference-file output/updated_assemblies/Ref.fa \
-#	--maf-dir ${imputed_maf} \
-#	-o ${imputed_hvcf}
-
-#${phg} load-vcf \
-#	--vcf-dir ${imputed_hvcf} \
-#	--db-path vcf_dbs \
-#	--threads 10
-
-
-
-read_mapping=output/read_mappings
-#mkdir ${read_mapping}
-
-#${phg} map-reads \
-#    --hvcf-dir output/vcf_files \
-#    --index ${h_index}/hindex.fmd \
-#    --key-file keyfiles/read_mapping_data.txt \
-#    --output-dir ${read_mapping}
-
-imputed_vcf=output/vcf_files_imputed
-#mkdir ${imputed_vcf}
-
-#${phg} find-paths \
-#    --path-keyfile output/read_mappings/pathKeyFile.txt \
-#    --hvcf-dir ${imputed_hvcf} \
-#    --reference-genome output/pangenome_index/pangenome.fa \
-#    --path-type haploid \
-#    --output-dir ${imputed_vcf}
-
-#	--path-keyfile keyfiles/path_finding_data.txt
-#	--reference-genome output/updated_assemblies/Ref.fa
-
-
-## work done pre 8-26
-#imputed_snp=output/imputed_snp
-#mkdir ${imputed_snp}
-
-#${phg} hvcf2gvcf \
-#	--hvcf-dir ${imputed_hvcf} \
-#	--db-path vcf_dbs \
-#	--reference-file output/updated_assemblies/Ref.fa \
-#	--output-dir ${imputed_snp}
