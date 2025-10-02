@@ -71,8 +71,8 @@ for (sample in founders) {
   }
   identity_table[[sample]] = round(comp_vec, 2)
 }
-write.table(identity_table, file="clipboard", sep="\t", quote=F, row.names=F)
-
+# write.table(identity_table, file="clipboard", sep="\t", quote=F, row.names=F)
+write.table(identity_table, file=glue("{dir}/output/phg_test1_allregions.tsv"), sep="\t", quote=F, row.names=F)
 
 
 ##characterize haploblocks
@@ -190,6 +190,7 @@ for (sample in founders) {
   identity_table[[glue("{sample}_genic")]] = round(comp_vec_genic, 2)
   identity_table[[glue("{sample}_intergenic")]] = round(comp_vec_intergenic, 2)
 }
+# write.table(identity_table, file=glue("{dir}/output/phg_test1_genic_intergenic.tsv"), sep="\t", quote=F, row.names=F)
 
 identity_table[,grep("inter", colnames(identity_table), invert=T)]
 

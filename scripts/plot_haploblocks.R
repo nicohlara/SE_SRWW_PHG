@@ -1,7 +1,7 @@
 
 library(dplyr)
 library(tidyr)
-library(ggplot)
+library(ggplot2)
 
 minfactor <- function(number) {
   for (i in 2:10) {
@@ -25,16 +25,18 @@ blocks_segments <- blocks %>%
   mutate(BlockStart = Position,
          BlockEnd   = lead(Position)) %>%
   filter(!is.na(BlockEnd)) 
-coln=minfactor(nrow(blocks_segments))
-blocks_segments$color <- as.factor(rep(1:coln, times = nrow(blocks_segments)/coln))
+coln=3
+blocks_segments$arbitrary_color <- as.factor(rep(1:coln, length = nrow(blocks_segments)))
 
 ggplot() +
   geom_segment(data = blocks_segments,
                aes(x = BlockStart, xend = BlockEnd,
                    y = Chromosome, yend = Chromosome,
-                   color = color),
-               linewidth = 4, lineend = "butt")
-ggsave('../SE_SRWW_PHG/figures/plink_haploblocks.png')
+                   color = arbitrary_color),
+               linewidth = 4, lineend = "butt") + 
+  theme_minimal() +
+  labs(x = "Position (bp)", y = "Chromosome", title="Haploblock sizes")
+ggsave('../SE_SRWW_PHG/figures/plink_haploblocks.png', width=14, height=6,)
 
 
 first_blocks <- blocks %>%
@@ -52,7 +54,7 @@ blocks_segments <- bind_rows(blocks_segments, first_blocks) %>%
          X = 0,
          Strand = ".")
 
-write.table(blocks_segments, '../SE_SRWW_PHG/data/haploblocks', 
+write.table(blocks_segments, '../SE_SRWW_PHG/data/haploblocks.txt', 
             quote = F, sep = "\t", 
             row.names = F, col.names = F)
 
