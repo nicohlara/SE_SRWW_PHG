@@ -1,6 +1,7 @@
 
 # install.packages("pak")
 # pak::pak("maize-genetics/rPHG2")
+.libPaths( "C:/Users/nalara/AppData/Local/R/win-library/4.3")
 
 options(java.parameters = "-Xmx12g")
 library(rJava)
@@ -15,7 +16,8 @@ initPhg(glue("{dir}/phg/lib"))
 
 chrom_pos <- read.delim(glue("{dir}/data/chrom_info.txt"))
 
-locCon <- PHGLocalCon(as.character(glue("{dir}/vcf_dbs/hvcf_files")))
+# locCon <- PHGLocalCon(as.character(glue("{dir}/vcf_dbs/hvcf_files")))
+locCon <- PHGLocalCon(as.character(glue("{dir}/vcf_dbs_plink/hvcf_files")))
 
 graph <- locCon |> buildHaplotypeGraph()
 
@@ -72,7 +74,8 @@ for (sample in founders) {
   identity_table[[sample]] = round(comp_vec, 2)
 }
 # write.table(identity_table, file="clipboard", sep="\t", quote=F, row.names=F)
-write.table(identity_table, file=glue("{dir}/output/phg_test1_allregions.tsv"), sep="\t", quote=F, row.names=F)
+# write.table(identity_table, file=glue("{dir}/output/phg_test1_allregions.tsv"), sep="\t", quote=F, row.names=F)
+write.table(identity_table, file=glue("{dir}/output/phg_plink_allregions.tsv"), sep="\t", quote=F, row.names=F)
 
 
 ##characterize haploblocks
@@ -83,7 +86,7 @@ haploblocks <- haploblocks |>
 hist(haploblocks$width)
 min(haploblocks$width); mean(haploblocks$width); max(haploblocks$width)
 
-##plot haploblock sizes
+# #plot haploblock sizes
 # ggplot(haploblocks, aes(x=start, y=width)) +
 #   geom_point() +
 #   facet_grid(rows=vars(group), cols = vars(subgenome), scales="free")
