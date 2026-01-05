@@ -1,0 +1,93 @@
+#!/bin/bash
+#SBATCH --account=guedira_seq_map
+#SBATCH --time=7-00:00:00
+#SBATCH --partition=atlas
+#SBATCH --nodes=1
+#SBATCH --ntasks-per-node=48
+#SBATCH --job-name="imputesmall_from_fasta"
+#SBATCH --mail-user=nalara@ncsu.edu
+#SBATCH --mail-type=END
+#SBATCH --mail-type=FAIL
+
+#to_impute=keyfiles/exome_impute.txt
+to_impute=keyfiles/exome_round2_GBS_impute.txt
+
+
+export _JAVA_OPTIONS="-Xmx350G"
+
+module load miniconda3
+conda activate /home/nicolas.lara/.conda/envs/phgv2-conda
+
+cd /90daydata/guedira_seq_map/nico/pangenome_multichrom
+
+#phg=phg/bin/phg
+phg=../phgv2_v2.4/bin/phg
+
+###imputation prep
+#${phg} list-samples \
+#	--db-path vcf_dbs \
+#	--data-set hvcf \
+#	--output-file output/sample_names_hvcf.txt
+
+hvcf_dir=output/hvcf_export
+#mkdir ${hvcf_dir}
+
+#${phg} export-vcf \
+#	--db-path vcf_dbs \
+#	--dataset-type hvcf \
+#	--sample-file output/sample_names_hvcf.txt \
+#	--output-dir ${hvcf_dir}
+
+index_dir=output/pangenome_index
+index_prefix=soft7_index
+#mkdir ${index_dir}
+
+#${phg} rope-bwt-index \
+#	--db-path vcf_dbs \
+#	--hvcf-dir ${hvcf_dir} \
+#	--output-dir ${index_dir} \
+#	--index-file-prefix ${index_prefix} \
+#	--threads 8
+
+
+###imputation steps with new data starts here
+
+read_mapping=output/read_mappings_exome2_gbs
+mkdir ${read_mapping}
+
+${phg} map-reads \
+	--hvcf-dir ${hvcf_dir} \
+	--index ${index_dir}/${index_prefix}.fmd \
+	--key-file ${to_impute} \
+	--output-dir ${read_mapping}
+
+imputed_hvcf=output/imputed_hvcf_exome2_gbs
+mkdir ${imputed_hvcf}
+
+${phg} find-paths \
+	--path-keyfile ${read_mapping}/pathKeyFile.txt \
+	--hvcf-dir ${hvcf_dir} \
+	--reference-genome output/updated_assemblies/Ref.fa \
+	--path-type haploid \
+	--output-dir ${imputed_hvcf}
+
+for vcf in ${imputed_hvcf}/*; do
+	bgzip $vcf
+	bcftools index ${vcf}.gz
+done
+
+${phg} load-vcf \
+	--vcf-dir ${imputed_hvcf} \
+	--db-path vcf_dbs \
+	--threads 10
+
+
+imputed_snp=output/imputed_snp_exome2_gbs
+mkdir ${imputed_snp}
+
+${phg} hvcf2gvcf \
+	--hvcf-dir ${imputed_hvcf} \
+	--db-path vcf_dbs \
+	--reference-file output/updated_assemblies/Ref.fa \
+	--output-dir ${imputed_snp}
+
