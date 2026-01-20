@@ -17,7 +17,7 @@ initPhg(glue("{dir}/phg/lib"))
 chrom_pos <- read.delim(glue("{dir}/data/chrom_info.txt"))
 
 # locCon <- PHGLocalCon(as.character(glue("{dir}/vcf_dbs/hvcf_files")))
-locCon <- PHGLocalCon(as.character(glue("{dir}/vcf_dbs_plink/hvcf_files")))
+locCon <- PHGLocalCon(as.character(glue("{dir}/hvcf_files")))
 
 graph <- locCon |> buildHaplotypeGraph()
 
@@ -46,6 +46,7 @@ phgDsf <-  phgDs |> filterRefRanges(gr)
 
 
 compare_overlap <- function(phg, sample1, sample2) {
+  if(sample1 == sample2) {return(1)}
   samp_haps <- phg |> filterSamples(c(sample1, sample2))
   m <- samp_haps |> readHapIds()
   m2 <- m[,!is.na(m[1,]) & !is.na(m[2,]) ]
@@ -73,6 +74,7 @@ for (sample in founders) {
   }
   identity_table[[sample]] = round(comp_vec, 2)
 }
+identity_table
 # write.table(identity_table, file="clipboard", sep="\t", quote=F, row.names=F)
 # write.table(identity_table, file=glue("{dir}/output/phg_test1_allregions.tsv"), sep="\t", quote=F, row.names=F)
 write.table(identity_table, file=glue("{dir}/output/phg_plink_allregions.tsv"), sep="\t", quote=F, row.names=F)
@@ -272,3 +274,24 @@ sink(glue("{dir}/output/haplotype_comparison_breakdown.txt"))
 print(phg_stats)
 sink()
 
+
+# 
+# 
+# ###create Haplotype GRM
+# hap_GRM <- function(phg) {
+#   samples <- phg |> readSamples()
+#   n <- length(samples)
+#   GRM <- matrix(NA_real_, n, n)
+#   
+#   for (i in seq_len(n)) {
+#     for (j in i:n) {
+#       val <- compare_overlap(phg, samples[[i]], samples[[j]])
+#       GRM[i, j] <- val
+#       GRM[j, i] <- val
+#     }
+#   }
+#   
+#   dimnames(GRM) <- list(samples, samples)
+#   return(GRM)
+# }
+# 
