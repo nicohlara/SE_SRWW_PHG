@@ -1,6 +1,6 @@
-.libPaths( "C:/Users/nalara/AppData/Local/R/win-library/4.3")
+.libPaths("/home/nicolas.lara/R/x86_64-pc-linux-gnu-library/4.4")
 
-options(java.parameters = "-Xmx12g")
+options(java.parameters = "-Xmx50g")
 library(rJava)
 
 library(rPHG2)
@@ -8,12 +8,12 @@ library(glue)
 library(GenomicRanges)
 library(dplyr)
 
-dir="c:/Users/nalara/Documents/GitHub/SE_SRWW_PHG"
-initPhg(glue("{dir}/phg/lib"))
+dir="/90daydata/guedira_seq_map/nico2/pangenome_multichrom"
+initPhg(glue("{dir}/../phgv2_v2.4/lib"))
 
 
 ##create PHG database
-locCon <- PHGLocalCon(as.character(glue("{dir}/hvcf_files")))
+locCon <- PHGLocalCon(as.character(glue("{dir}/vcf_dbs/hvcf_files")))
 graph <- locCon |> buildHaplotypeGraph()
 phgDs <- graph |> readPhgDataSet()
 
@@ -25,7 +25,7 @@ haploblocks <- haploblocks |>
 min(haploblocks$width); mean(haploblocks$width); max(haploblocks$width)
 
 ##get genic region names
-ref_ranges <- read.delim(glue("{dir}/ref_ranges.bed"), header = F) |>
+ref_ranges <- read.delim("/project/guedira_seq_map/nico/pangenome/data/ref_ranges.bed", header = F) |>  
   dplyr::rename(start = V2, end = V3) |>
   mutate(start = start + 1)
 haplo_regionames <- merge(haploblocks, ref_ranges, by = c("start", "end"))
@@ -54,9 +54,7 @@ hap_GRM_calculator <- function(phg) {
         m2 <- m[,!is.na(m[1,]) & !is.na(m[2,]) ]
         same <- m2[,m2[1,] == m2[2,]]
         val <- ncol(same)/ncol(m2)
-      }
-      
-      val <- compare_overlap(phg, samples[[i]], samples[[j]])
+      } 
       GRM[i, j] <- val
       GRM[j, i] <- val
     }
@@ -66,4 +64,4 @@ hap_GRM_calculator <- function(phg) {
 }
 
 HRM <- hap_GRM_calculator(phg_genic)
-write.csv(HRM, glue("{dir}/output/HRM.csv"), quote = F)
+write.csv(HRM, glue("{dir}/output/GRM/HRM.csv"), quote = F)

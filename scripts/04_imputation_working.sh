@@ -11,7 +11,11 @@
 
 #to_impute=keyfiles/exome_impute.txt
 #to_impute=keyfiles/exome_round2_GBS_impute.txt
-to_impute=keyfiles/SunRILs_impute.txt
+#to_impute=keyfiles/round2_GBS_impute.txt
+#to_impute=keyfiles/SunRILs_population.txt
+#project=SunRILs_population
+project=GBS_founders_fillin
+
 
 export _JAVA_OPTIONS="-Xmx350G"
 
@@ -52,39 +56,42 @@ index_prefix=soft7_index
 
 ###imputation steps with new data starts here
 
-read_mapping=output/read_mappings_SunRILs_GBS
-mkdir ${read_mapping}
+read_mapping=output/${project}_read_mappings
+#mkdir ${read_mapping}
+#read_mapping=output/read_mappings_SunRILs_GBS
 
-${phg} map-reads \
-	--hvcf-dir ${hvcf_dir} \
-	--index ${index_dir}/${index_prefix}.fmd \
-	--key-file ${to_impute} \
-	--min-mem-length 94 \
-	--threads 10 \
-	--output-dir ${read_mapping}
+#${phg} map-reads \
+#	--hvcf-dir ${hvcf_dir} \
+#	--index ${index_dir}/${index_prefix}.fmd \
+#	--key-file ${to_impute} \
+#	--min-mem-length 94 \
+#	--threads 10 \
+#	--output-dir ${read_mapping}
 
-imputed_hvcf=output/imputed_hvcf_SunRILs_GBS
-mkdir ${imputed_hvcf}
-
-${phg} find-paths \
-	--path-keyfile ${read_mapping}/pathKeyFile.txt \
-	--hvcf-dir ${hvcf_dir} \
-	--reference-genome output/updated_assemblies/Ref.fa \
-	--path-type haploid \
-	--output-dir ${imputed_hvcf}
-
-for vcf in ${imputed_hvcf}/*; do
-	bgzip $vcf
-	bcftools index ${vcf}.gz
-done
-
-${phg} load-vcf \
-	--vcf-dir ${imputed_hvcf} \
-	--db-path vcf_dbs \
-	--threads 10
+imputed_hvcf=output/${project}_imputed_hvcf
+#mkdir ${imputed_hvcf}
+#imputed_hvcf=utput/imputed_hvcf_SunRILs_GBS
 
 
-imputed_snp=output/imputed_snp_SunRILs_GBS
+#${phg} find-paths \
+#	--path-keyfile ${read_mapping}/pathKeyFile.txt \
+#	--hvcf-dir ${hvcf_dir} \
+#	--reference-genome output/updated_assemblies/Ref.fa \
+#	--path-type haploid \
+#	--output-dir ${imputed_hvcf}
+
+#for vcf in ${imputed_hvcf}/*.h.vcf; do
+#	bgzip $vcf
+#	bcftools index ${vcf}.gz
+#done
+
+#${phg} load-vcf \
+#	--vcf-dir ${imputed_hvcf} \
+#	--db-path vcf_dbs \
+#	--threads 48
+
+#imputed_snp=output/imputed_snp_SunRILs_GBS
+imputed_snp=output/${project}_imputed_snp
 mkdir ${imputed_snp}
 
 ${phg} hvcf2gvcf \
