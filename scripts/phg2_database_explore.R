@@ -3,7 +3,7 @@
 # pak::pak("maize-genetics/rPHG2")
 .libPaths( "C:/Users/nalara/AppData/Local/R/win-library/4.3")
 
-options(java.parameters = "-Xmx12g")
+options(java.parameters = "-Xmx14g")
 library(rJava)
 
 library(rPHG2)

@@ -1,6 +1,7 @@
 
 library(gaston)
 library(popkin)
+library(glue)
 
 dir="c:/Users/nalara/Documents/GitHub/SE_SRWW_PHG"
 geno_dir="c:/Users/nalara/Documents/GitHub/SunRILs_population"
