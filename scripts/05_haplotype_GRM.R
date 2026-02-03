@@ -39,6 +39,8 @@ genic_r <- GRanges(
 ##filter PHG haplotypes
 phg_genic <-  phgDs |> filterRefRanges(genic_r)
 
+print(length(phg_genic |> readSamples()))
+
 hap_GRM_calculator <- function(phg) {
   samples <- phg |> readSamples()
   n <- length(samples)
@@ -64,4 +66,7 @@ hap_GRM_calculator <- function(phg) {
 }
 
 HRM <- hap_GRM_calculator(phg_genic)
-write.csv(HRM, glue("{dir}/output/GRM/HRM.csv"), quote = F)
+write.csv(HRM, glue("{dir}/output/rPHG/HRM.csv"), quote = F)
+
+haplotype_table <- phg_genic@hapIds
+write.csv(haplotype_table, glue("{dir}/output/rPHG/haplotype_table.csv"), quote = F)

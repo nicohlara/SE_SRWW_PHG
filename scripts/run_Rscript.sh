@@ -18,6 +18,6 @@ conda activate /home/nicolas.lara/.conda/envs/r-phg
 module load openblas
 export LD_LIBRARY_PATH=$CONDA_PREFIX/lib/jvm/lib/server:$LD_LIBRARY_PATH
 
-#Rscript /project/guedira_seq_map/nico/pangenome/scripts/05_haplotype_GRM.R
-Rscript /project/guedira_seq_map/nico/pangenome/scripts/05_accuracy_assessment.R
+Rscript /project/guedira_seq_map/nico/pangenome/scripts/05_haplotype_GRM.R
+#Rscript /project/guedira_seq_map/nico/pangenome/scripts/05_accuracy_assessment.R
 
