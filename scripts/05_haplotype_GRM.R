@@ -7,6 +7,8 @@ library(rPHG2)
 library(glue)
 library(GenomicRanges)
 library(dplyr)
+library(parallel)
+
 
 dir="/90daydata/guedira_seq_map/nico2/pangenome_multichrom"
 initPhg(glue("{dir}/../phgv2_v2.4/lib"))
@@ -38,35 +40,44 @@ genic_r <- GRanges(
 
 ##filter PHG haplotypes
 phg_genic <-  phgDs |> filterRefRanges(genic_r)
-
 print(length(phg_genic |> readSamples()))
 
-hap_GRM_calculator <- function(phg) {
-  samples <- phg |> readSamples()
-  n <- length(samples)
-  GRM <- matrix(NA_real_, n, n)
+H <- phg_genic |> readHapIds()
+write.csv(H, glue("{dir}/output/rPHG/haplotypes.tsv"), quote = F)
+H[is.na(H)] <- "NA"
+H <- H[, apply(H, 2, function(x) length(unique(x))) > 1]
+Hr <- rownames(H); Hc <- colnames(H)
+
+H <- sapply(seq_len(ncol(H)), function(j) {
+  as.integer(factor(H[, j]))
+})
+rownames(H) <- Hr; colnames(H) <- Hc
+
+print(glue("Calculating GRM for {nrow(H)} samples over {ncol(H)} haplotype regions"))
+start.time <- Sys.time()
+print(start.time)
+hap_GRM_calculator_chunk <- function(H, chunk = 1000, cores = 8) {
+  n <- nrow(H)
+  m <- ncol(H)
   
-  for (i in seq_len(n)) {
-    for (j in i:n) {
-      if(samples[i] == samples[j]) {
-        val <- 1
-      } else {
-        samp_haps <- phg |> filterSamples(c(samples[i], samples[j]))
-        m <- samp_haps |> readHapIds()
-        m2 <- m[,!is.na(m[1,]) & !is.na(m[2,]) ]
-        same <- m2[,m2[1,] == m2[2,]]
-        val <- ncol(same)/ncol(m2)
-      } 
-      GRM[i, j] <- val
-      GRM[j, i] <- val
+  chunks <- split(seq_len(m), ceiling(seq_len(m)/chunk))
+  
+  partials <- mclapply(chunks, function(idx) {
+    G <- matrix(0, n, n)
+    for (k in idx) {
+      col <- H[, k]
+      ok <- !is.na(col)
+      if (sum(ok) < 2) next
+      Z <- model.matrix(~ factor(col[ok]) - 1)
+      G[ok, ok] <- G[ok, ok] + tcrossprod(Z)
     }
-  }
-  dimnames(GRM) <- list(samples, samples)
-  return(GRM)
+    G
+  }, mc.cores = cores)
+  
+  Reduce(`+`, partials) / m
 }
-
-HRM <- hap_GRM_calculator(phg_genic)
+end.time <- Sys.time()
+time.taken <- end.time - start.time
+print(time.taken)
+HRM <- hap_GRM_calculator_chunk(H, 1000, cores=1)
 write.csv(HRM, glue("{dir}/output/rPHG/HRM.csv"), quote = F)
-
-haplotype_table <- phg_genic@hapIds
-write.csv(haplotype_table, glue("{dir}/output/rPHG/haplotype_table.csv"), quote = F)

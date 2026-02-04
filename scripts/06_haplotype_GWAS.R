@@ -5,149 +5,92 @@ library(ggplot2)
 library(lme4)
 library(rrBLUP)
 
-haplotypes <- phg@hapIds
-# haplotypes <- haplotypes[grep("Ref", rownames(haplotypes), invert=T),]
-# haplotypes <- haplotypes[,apply(haplotypes, 2, function(x) !all(is.na(x)))]
+##basic implementation of an input-blind GWAS for haplotype to SNP comparisons
+##inputs: BLUEs file with column 1 'ID' designating line name and X phenotype columns
+##        phgv2 database haplotype calls (rPHG: phg@hapIds, write to csv)
+##        SNP dataset from GASTON
 
-SNPs <- as.matrix(genotype)
-SNPs_subset <- genotype@snps[c("chr", "pos", "id")]
-markers <- c()
-for (ch in unique(SNPs_subset$chr)) {
-  a <- SNPs_subset[SNPs_subset$chr == ch,]
-  markers <- c(markers, sample(a$id, 50))
-}
-SNPs <- SNPs[,markers]
+##set up to be run on-server
+project_dir="c:/Users/nalara/Documents/GitHub/SE_SRWW_PHG"
+PHG_dir="/90daydata/guedira_seq_map/nico2/pangenome_multichrom/rPHG/"
 
-bl <- filter(blues, Entry %in% row.names(SNPs))
-rownames(bl) <- bl$Entry
-bl <- bl[row.names(SNPs),]
-SNPs <- SNPs[row.names(bl),]
-# bl <- as.matrix(bl)
+## read in BLUEs
+blues <- read.delim(glue("{project_dir}/data/blues.csv"), sep=",") |>
+  dplyr::rename(ID = Entry)
 
-# GRM <- A.mat(SNPs)
-# 
-# null <- mmer(
-#   PM ~ 1,
-#   random = ~ vs(Entry, Gu = GRM),
-#   data = bl
-# )
-# Vinv <- solve(null$Vi)
-# C <- matrix(1, nrow = length(y), ncol = 1)
-# CtVinv <- crossprod(C, Vinv)
-# CtVinvC <- CtVinv %*% C
-# P <- Vinv - Vinv %*% C %*% solve(CtVinvC) %*% CtVinv
+##read in genotype files. Rows=ID, columns = sequence region/marker
+haplotypes <- read.delim(glue("{PHG_dir}/haplotypes.tsv"))
+SNPs <- read.delim(glue("{project_dir}/data/SNPs.tsv"))
 
+##read in Relationship Matrices, rather than recalculate (especially the haplotype)
+GRM <- read.delim(glue("{PHG_dir}/GRM.csv"), sep=",", row.names = 1)
+colnames(GRM) <- rownames(GRM)
+HRM <- read.delim(glue("{PHG_dir}/HRM.csv"), sep=",", row.names = 1)
+colnames(HRM) <- rownames(HRM)
 
-# assoc_test <- function(y, X, Vinv) {
-#   # X: n x p design matrix
-#   XtVinv <- crossprod(X, Vinv)
-#   XtVinvX <- XtVinv %*% X
-#   XtVinvY <- XtVinv %*% y
-#   
-#   beta_hat <- solve(XtVinvX, XtVinvY)
-#   stat <- drop(t(beta_hat) %*% XtVinvX %*% beta_hat)
-#   
-#   pchisq(stat, df = ncol(X), lower.tail = FALSE)
-# }
-assoc_test <- function(y, X, P) {
-  XtP <- crossprod(X, P)
-  XtPX <- XtP %*% X
-  XtPy <- XtP %*% y
-  
-  beta <- solve(XtPX, XtPy)
-  stat <- drop(t(beta) %*% XtPX %*% beta)
-  
-  pchisq(stat, df = ncol(X), lower.tail = FALSE)
-}
+## GWAS function
+##phenotype is 2-column dataframe, ID and y
+##K = relationship matrix
+##geno = dataframe, ID rows x genetic columns
 
-# 
-# mh <- data.frame()
-# for (m in markers) {
-#   SNPset <- SNPs[,m]
-#   p <- assoc_test(bl[,"PM"], matrix(SNPs[,m], ncol=1) , P)
-#   mh <- rbind(mh, data.frame(marker = m, pval = p))
-# }
-# 
-# mh[,c("chr", "pos")] <- str_split_fixed(mh$marker, "_", 2)
-# mh <- mh %>%
-#   mutate(pos = as.numeric(pos))
-# ggplot(mh, aes(x = pos, y = -log10(pval))) +
-#   geom_point() +
-#   facet_grid(cols = vars(chr))
-# 
-# 
-# 
-# ##sommer GWAS
-# 
-# mix2 <- GWAS(color~1,
-#              random=~vsm(ism(id), Gu=A) + Rowf + Colf,
-#              rcov=~units, M=GT, gTerm = "u:id",
-#              verbose = FALSE, nIters=10,
-#              data=DT)
-# 
-# 
-# 
-# ##slow dumb GWAS loop to compare
-# len <- ncol(SNPs)
-# count = 0
-# print(Sys.time())
-# plot_df <- data.frame()
-# j <- 5
-# for (i in c(1:len)) {
-#   if (round((i/len)*100) > count) {
-#     count <- round((i/len)*100)
-#     print(paste(count, "%", sep=""))
-#   }
-#   b <- data.frame(Entry = rownames(SNPs), Marker = SNPs[,i])
-#   c <- colnames(SNPs)[i]
-#   if (length(unique(b$Marker)) > 1) {
-#     d <- merge(blues,b, by="Entry")
-#     p_vals <- data.frame(id = c)
-#     mm <- suppressMessages(lmer(data = d, d[,j] ~ Marker + (1|Cross_ID)))
-#     p <- 2 * (1 - pnorm(abs(data.frame(coef(summary(mm)))['Marker','t.value'])))
-#     p_vals[paste("p_", names(blues[j]), sep="")] <- p
-#         mm <- suppressMessages(lmer(data = d, d[,j] ~ Marker + (1|Cross_ID)))
-#     }
-#     plot_df <- rbind(plot_df, p_vals)
-# }
-# 
-# 
-# plot_df$chr <- str_replace(str_replace(plot_df$id, "^S", ""), "_\\d*$", "")
-# plot_df$pos <- as.numeric(str_replace(plot_df$id, "^S\\d[ABD]_", ""))
-# ggplot(plot_df, aes(x = pos, y = -log10(p_PM))) +
-#   geom_point() +
-#   facet_grid(cols = vars(chr))
-
-
-###reimplementation of basic model
-
-y <- bl[["PM"]]
-##fit the family effect. I suspect I could replace this with a GRM?
-# null <- lmer(y ~ 1 + (1 | Cross_ID), data = bl, REML = TRUE)
-null <- mmer( PM ~ 1,random = ~ vs(Entry, Gu = GRM),
-              data = bl)
-# null <- mixed.solve(y=y, K=GRM, SE=F)
-# y_resid <- resid(null)
-# y_resid <- y - c(null$beta) - null$u
-y_resid <- y - c(null$Beta$Estimate) - null$U$`u:Entry`$PM
-G <- as.matrix(SNPs)
-fast_assoc <- function(y, G) {
-  pvals <- numeric(ncol(G))
-  for (i in seq_len(ncol(G))) {
-    g <- G[, i]
-    if (length(unique(g)) < 2) {
-      pvals[i] <- NA
-      next
+input_agnostic_GWAS <- function(phenotype, K, geno) {
+  phenotype <- phenotype |> 
+    dplyr::filter(ID %in% row.names(geno))
+  geno <- geno[phenotype$ID,]
+  geno <- as.matrix(geno)
+  geno <- geno[, apply(geno, 2, function(x) length(unique(x))) > 1]
+  geno[is.na(geno)] <- "NA"
+  K <- K[phenotype$ID, phenotype$ID]
+  K <- as.matrix(K)
+  y <- phenotype[,2]
+  null <- mmer(as.formula(glue("{colnames(phenotype)[2]} ~ 1")), random = ~ vs(ID, Gu = K),
+                data = phenotype)
+  y_resid <- y - c(null$Beta$Estimate) - null$U$`u:ID`[[1]]
+  fast_assoc <- function(y, G) {
+    pvals <- numeric(ncol(G))
+    for (i in seq_len(ncol(G))) {
+      g <- G[, i]
+      if (length(unique(g)) < 2) {
+        pvals[i] <- NA
+        next
+      }
+      fit <- lm(y ~ g)
+      pvals[i] <- summary(fit)$coefficients[2, 4]
     }
-    fit <- lm(y ~ g)
-    pvals[i] <- summary(fit)$coefficients[2, 4]
+    pvals
   }
-  pvals
+  p <- fast_assoc(y_resid, geno)
+  plot_df <- data.frame(id = colnames(geno), p = p)
+  # plot_df$chr <- str_replace(str_replace(plot_df$id, "^S", ""), "_\\d*$", "")
+  # plot_df$pos <- as.numeric(str_replace(plot_df$id, "^S\\d[ABD]_", ""))
+  return(plot_df)
 }
-p <- fast_assoc(y_resid, G)
-plot_df <- data.frame(id = colnames(G), p = p)
-plot_df$chr <- str_replace(str_replace(plot_df$id, "^S", ""), "_\\d*$", "")
-plot_df$pos <- as.numeric(str_replace(plot_df$id, "^S\\d[ABD]_", ""))
+
+
+gwas_results <- data.frame()
+for (trait in colnames(blues)[-c(1:2)]) {
+  ph <- blues[,c('ID', trait)]
+  snp_gwas <- input_agnostic_GWAS(ph, GRM, SNPs)
+  snp_gwas$chr <- str_replace(str_replace(snp_gwas$id, "^S", ""), "_\\d*$", "")
+  snp_gwas$pos <- as.numeric(str_replace(snp_gwas$id, "^S\\d[ABD]_", ""))
+  snp_gwas$end = NA; snp_gwas$K <- "SNP"; snp_gwas$trait <- trait; 
+  
+  
+  hap_gwas <- input_agnostic_GWAS(ph, HRM, haplotypes)
+  # hap_gwas$chr <- str_replace(str_replace(hap_gwas$id, "^chr", ""), "\\:\\d*$", "")
+  hap_gwas <- hap_gwas %>%
+    mutate(haploregion = id) |>
+    separate(haploregion, into = c("chr", "range"), sep = ":") %>%
+    separate(range, into = c("pos", "end"), sep = "-") %>%
+    mutate(chr = sub("^chr", "", chr))
+  
+  hap_gwas$K <- "Haplotype"; hap_gwas$trait <- trait 
+  
+  
+
+  gwas_results <- rbind(gwas_results, snp_gwas, hap_gwas)
+}
+
 ggplot(plot_df, aes(x = pos, y = -log10(p))) +
   geom_point() +
   facet_grid(cols = vars(chr))
