@@ -38,46 +38,70 @@ genic_r <- GRanges(
   ranges = IRanges(genic_ranges$start, genic_ranges$end)
 )
 
-##filter PHG haplotypes
+##filter PHG haplotypes to genic regions
 phg_genic <-  phgDs |> filterRefRanges(genic_r)
 print(length(phg_genic |> readSamples()))
 
+##massage data into fast integer-based matrix. Save a copy for GWAS
 H <- phg_genic |> readHapIds()
 write.csv(H, glue("{dir}/output/rPHG/haplotypes.tsv"), quote = F)
 H[is.na(H)] <- "NA"
 H <- H[, apply(H, 2, function(x) length(unique(x))) > 1]
 Hr <- rownames(H); Hc <- colnames(H)
-
 H <- sapply(seq_len(ncol(H)), function(j) {
   as.integer(factor(H[, j]))
 })
 rownames(H) <- Hr; colnames(H) <- Hc
 
-print(glue("Calculating GRM for {nrow(H)} samples over {ncol(H)} haplotype regions"))
-start.time <- Sys.time()
-print(start.time)
+##function for calculating haplotype GRM
 hap_GRM_calculator_chunk <- function(H, chunk = 1000, cores = 8) {
   n <- nrow(H)
   m <- ncol(H)
   
   chunks <- split(seq_len(m), ceiling(seq_len(m)/chunk))
-  
-  partials <- mclapply(chunks, function(idx) {
+  calc_pair_chunk <- function(idx, H) {
+    n <- nrow(H)
     G <- matrix(0, n, n)
+    
     for (k in idx) {
       col <- H[, k]
       ok <- !is.na(col)
       if (sum(ok) < 2) next
+      
       Z <- model.matrix(~ factor(col[ok]) - 1)
       G[ok, ok] <- G[ok, ok] + tcrossprod(Z)
     }
     G
-  }, mc.cores = cores)
+  }
+  library(parallel)
   
-  Reduce(`+`, partials) / m
+  cores <- 8  # or Sys.getenv("SLURM_CPUS_PER_TASK")
+  cl <- makeCluster(cores, type = "PSOCK")
+  clusterExport(
+    cl,
+    varlist = c("H", "calc_pair_chunk"),
+    envir = environment()
+  )
+  res <- parLapply(
+    cl,
+    chunks,
+    calc_pair_chunk,
+    H = H
+  )
+  GRM <- Reduce(`+`, res)
+  GRM <- GRM / ncol(H)
+  dimnames(GRM) <- list(rownames(H), rownames(H))
+  
+  stopCluster(cl)
+  return(GRM)
 }
+
+print(glue("Calculating GRM for {nrow(H)} samples over {ncol(H)} haplotype regions"))
+start.time <- Sys.time()
+print(start.time)
+HRM <- hap_GRM_calculator_chunk(H, 1000, cores=8)
 end.time <- Sys.time()
 time.taken <- end.time - start.time
 print(time.taken)
-HRM <- hap_GRM_calculator_chunk(H, 1000, cores=1)
+
 write.csv(HRM, glue("{dir}/output/rPHG/HRM.csv"), quote = F)
