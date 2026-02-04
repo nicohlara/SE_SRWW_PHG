@@ -1,18 +1,16 @@
 .libPaths("/home/nicolas.lara/R/x86_64-pc-linux-gnu-library/4.4")
 
-options(java.parameters = "-Xmx50g")
+options(java.parameters = "-Xmx100g")
 library(rJava)
-
 library(rPHG2)
 library(glue)
 library(GenomicRanges)
 library(dplyr)
 library(parallel)
 
-
 dir="/90daydata/guedira_seq_map/nico2/pangenome_multichrom"
-initPhg(glue("{dir}/../phgv2_v2.4/lib"))
 
+initPhg(glue("{dir}/../phgv2_v2.4/lib"))
 
 ##create PHG database
 locCon <- PHGLocalCon(as.character(glue("{dir}/vcf_dbs/hvcf_files")))
@@ -42,9 +40,11 @@ genic_r <- GRanges(
 phg_genic <-  phgDs |> filterRefRanges(genic_r)
 print(length(phg_genic |> readSamples()))
 
-##massage data into fast integer-based matrix. Save a copy for GWAS
+##Extract haplotypes, save copy
 H <- phg_genic |> readHapIds()
-write.csv(H, glue("{dir}/output/rPHG/haplotypes.tsv"), quote = F)
+#write.csv(H, glue("{dir}/output/rPHG/haplotypes.tsv"), quote = F)
+	
+##Massage haplotypes into format best suited for fast processing
 H[is.na(H)] <- "NA"
 H <- H[, apply(H, 2, function(x) length(unique(x))) > 1]
 Hr <- rownames(H); Hc <- colnames(H)
@@ -54,52 +54,30 @@ H <- sapply(seq_len(ncol(H)), function(j) {
 rownames(H) <- Hr; colnames(H) <- Hc
 
 ##function for calculating haplotype GRM
-hap_GRM_calculator_chunk <- function(H, chunk = 1000, cores = 8) {
+hap_GRM_calculator <- function(H) {
+  samples <- rownames(H)
   n <- nrow(H)
   m <- ncol(H)
+  G <- matrix(0, n, n)
   
-  chunks <- split(seq_len(m), ceiling(seq_len(m)/chunk))
-  calc_pair_chunk <- function(idx, H) {
-    n <- nrow(H)
-    G <- matrix(0, n, n)
-    
-    for (k in idx) {
-      col <- H[, k]
-      ok <- !is.na(col)
-      if (sum(ok) < 2) next
-      
-      Z <- model.matrix(~ factor(col[ok]) - 1)
-      G[ok, ok] <- G[ok, ok] + tcrossprod(Z)
-    }
-    G
+  for (k in seq_len(m)) {
+    col <- H[, k]
+    ok <- !is.na(col)
+    if (sum(ok) < 2) next
+
+    Z <- model.matrix(~ factor(col[ok]) - 1)
+    G[ok, ok] <- G[ok, ok] + tcrossprod(Z)
   }
-  library(parallel)
-  
-  cores <- 8  # or Sys.getenv("SLURM_CPUS_PER_TASK")
-  cl <- makeCluster(cores, type = "PSOCK")
-  clusterExport(
-    cl,
-    varlist = c("H", "calc_pair_chunk"),
-    envir = environment()
-  )
-  res <- parLapply(
-    cl,
-    chunks,
-    calc_pair_chunk,
-    H = H
-  )
-  GRM <- Reduce(`+`, res)
-  GRM <- GRM / ncol(H)
-  dimnames(GRM) <- list(rownames(H), rownames(H))
-  
-  stopCluster(cl)
-  return(GRM)
+
+  G <- G / m 
+  rownames(G) <- samples; colnames(G) <- samples
+  return(G)
 }
 
 print(glue("Calculating GRM for {nrow(H)} samples over {ncol(H)} haplotype regions"))
 start.time <- Sys.time()
 print(start.time)
-HRM <- hap_GRM_calculator_chunk(H, 1000, cores=8)
+HRM <- hap_GRM_calculator(H)
 end.time <- Sys.time()
 time.taken <- end.time - start.time
 print(time.taken)

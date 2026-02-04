@@ -1,3 +1,4 @@
+.libPaths("/home/nicolas.lara/R/x86_64-pc-linux-gnu-library/4.4")
 library(sommer)
 library(dplyr)
 library(stringr)

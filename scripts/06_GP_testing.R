@@ -1,11 +1,11 @@
-
+.libPaths("/home/nicolas.lara/R/x86_64-pc-linux-gnu-library/4.4")
 library(sommer)
 library(glue)
 library(dplyr)
 
 #dir="c:/Users/nalara/Documents/GitHub/SE_SRWW_PHG"
-GRM_dir="/90daydata/guedira_seq_map/nico2/pangenome_multichrom/rPHG/"
-BLUE_dir="/project/guedira_seq_map/nico/pangenome/"
+GRM_dir="/90daydata/guedira_seq_map/nico2/pangenome_multichrom/output/rPHG"
+BLUE_dir="/project/guedira_seq_map/nico/pangenome"
 
 calculate_prediction_accuracy <- function(phenotype_df, relationship_matrix, seed = 12345, withold_percent = 0.2) {
   set.seed(seed)
@@ -16,7 +16,7 @@ calculate_prediction_accuracy <- function(phenotype_df, relationship_matrix, see
   ans <- mmes(pheno~1,
               random=~vsm(ism(Entry),Gu=relationship_matrix), 
               rcov=~units,nIters=10,
-              data=y.trn, verbose = FALSE) # kinship based
+              data=y.trn, verbose = FALSE, dateWarning=FALSE) # kinship based
   return(cor(ans$u[vv,] ,phenotype_df[vv,"pheno"], use="complete"))
 }
 
