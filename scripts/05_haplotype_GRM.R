@@ -51,6 +51,7 @@ Hr <- rownames(H); Hc <- colnames(H)
 H <- sapply(seq_len(ncol(H)), function(j) {
   as.integer(factor(H[, j]))
 })
+Hr <- gsub("_G1", "", Hr)
 rownames(H) <- Hr; colnames(H) <- Hc
 
 ##function for calculating haplotype GRM

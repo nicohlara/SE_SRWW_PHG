@@ -27,9 +27,13 @@ families <- c("UX1989", "UX1991", "UX1992", "UX1993", "UX1994",
               "UX2013", "UX2023", "UX2026", "UX2029", "UX2031")
 # seeds <- c(45174796)
 
-accuracies <- data.frame()
+#accuracies <- data.frame()
 #drop_one_family <- data.frame()
-for (mat in c("GRM", "Additive_GRM", "HRM")) {
+#for (mat in c("GRM", "Additive_GRM", "HRM")) {
+for (mat in c("HRM")) {
+  print(mat)
+  print("")
+  print("")
   ##read in and format Kinship matrix
   K <- read.delim(glue("{GRM_dir}/{mat}.csv"), sep=",", row.names = 1)
   colnames(K) <- rownames(K)
@@ -42,10 +46,12 @@ for (mat in c("GRM", "Additive_GRM", "HRM")) {
   K <- K[blues$Entry, blues$Entry]
   ##perform traitwise GP
   for (trait in c("WDR", "Height", "HD", "PM")) {
+    accuracies <- data.frame()
     phenotype_df <- blues |> dplyr::select(Entry, !!as.symbol(trait))
     colnames(phenotype_df) <- c("Entry", "pheno")
     for (wp in c(0.1, 0.25, 0.5, 0.75)) {
       print(glue("Predicting {trait} with {wp} portion witheld data"))
+      print("")
       for (se in seeds) {
         pred_acc <- calculate_prediction_accuracy(phenotype_df, K, seed= se, withold_percent=wp)
         # print(pred_acc)
@@ -54,6 +60,7 @@ for (mat in c("GRM", "Additive_GRM", "HRM")) {
         accuracies <- rbind(accuracies, df)
       }
     }
+    write.csv(accuracies, glue("{GRM_dir}/genomic_prediction_accuracies_{trait}_{mat}.csv"), row.names=F)
     #for (fam in families) {
     #  y.trn <- phenotype_df
     #  vv <- grep(fam, rownames(phenotype_df), value=T)
@@ -72,7 +79,7 @@ for (mat in c("GRM", "Additive_GRM", "HRM")) {
   }
 }
 
-write.csv(accuracies, glue("{GRM_dir}/genomic_prediction_accuracies.csv"), row.names=F)
+#write.csv(accuracies, glue("{GRM_dir}/genomic_prediction_accuracies.csv"), row.names=F)
 #write.csv(drop_one_family, glue("{dir}/output/genomic_prediction_accuracies_familywise.csv"), row.names=F)
 
 # pirateplot(prediction_accuracy ~ percent_witheld + trait, data=accuracies)
