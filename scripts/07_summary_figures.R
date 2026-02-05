@@ -34,6 +34,33 @@ pirateplot(Percent_agreement ~ Sequencing, data=id_filt, ylim=c(0,1))
 # write.csv(accuracies, glue("{dir}/output/genomic_prediction_accuracies.csv"), row.names=F)
 
 ##examine prediction accuracies
-acc <- read.delim(glue("{dir}/output/genomic_prediction_accuracies.csv"), sep=",")
-pirateplot(prediction_accuracy ~ relationship_matrix + percent_witheld + trait, data=acc, ylim = c(0,1))
+# acc <- read.delim(glue("{dir}/output/genomic_prediction_accuracies.csv"), sep=",")
+files <- list.files(glue("{dir}/output/accuracy_tests"), full.names=T)
+tables = lapply(files, read.delim, sep=",")
+accuracies <- do.call('rbind', tables)
+accuracies <- dplyr::filter(accuracies, relationship_matrix != "Additive_GRM")
 
+pvals <- accuracies %>%
+  group_by(trait, percent_withheld) %>%
+  group_modify(~ {
+    tt <- t.test(prediction_accuracy ~ relationship_matrix, data = .x)
+    tibble(
+      p_value = tt$p.value,
+      t_stat  = tt$statistic,
+      estimate_diff = diff(tt$estimate)
+    )
+  }) %>%
+  ungroup() |>
+  mutate(sig = case_when(
+    p_value < 0.001 ~ "***",
+    p_value < 0.01  ~ "**",
+    p_value < 0.05  ~ "*",
+    TRUE            ~ ""
+  ))
+
+res_val=
+png(filename = glue('{dir}/figures/accuracy_charts.png'),  
+    width=750*res_val, height=700*res_val, res=72*res_val,
+    bg='transparent')
+pirateplot(prediction_accuracy ~ relationship_matrix + percent_withheld + trait, data=accuracies, ylim = c(0,1))
+dev.off()
