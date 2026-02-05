@@ -6,7 +6,7 @@ library(rPHG2)
 library(glue)
 library(GenomicRanges)
 library(dplyr)
-library(parallel)
+# library(parallel)
 
 dir="/90daydata/guedira_seq_map/nico2/pangenome_multichrom"
 
