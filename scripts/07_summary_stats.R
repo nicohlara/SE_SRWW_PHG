@@ -1,16 +1,37 @@
-.libPaths( "C:/Users/nalara/AppData/Local/R/win-library/4.3")
+#.libPaths( "C:/Users/nalara/AppData/Local/R/win-library/4.3")
+.libPaths("/home/nicolas.lara/R/x86_64-pc-linux-gnu-library/4.4")
 library(glue)
 library(dplyr)
 library(sommer)
 library(vegan)
 
+PHG_dir="/90daydata/guedira_seq_map/nico2/pangenome_multichrom"
 
-###test similarity of Haplotype and SNP-based GRM
-GRM <- read.delim(glue("{PHG_dir}/GRM.csv"), sep=",", row.names = 1)
+##read in Relationship Matrices
+GRM <- read.delim(glue("{PHG_dir}/output/rPHG/GRM.csv"), sep=",", row.names = 1)
 colnames(GRM) <- rownames(GRM)
-HRM <- read.delim(glue("{PHG_dir}/HRM.csv"), sep=",", row.names = 1)
+print(dim(GRM))
+HRM <- read.delim(glue("{PHG_dir}/output/rPHG/HRM.csv"), sep=",", row.names = 1)
+HRM <- HRM[grep("SRGBS|UX", rownames(HRM), value=T),grep("SRGBS|UX", colnames(HRM), value=T)]
+rownames(HRM) <- gsub("_SRGBS", "", rownames(HRM))
 colnames(HRM) <- rownames(HRM)
-print(mantel(GRM, HRM))
+print(dim(HRM))
+uGRM <- read.delim(glue("{PHG_dir}/output/rPHG/uSNP_GRM.csv"), sep=",", row.names = 1)
+colnames(uGRM) <- rownames(uGRM)
+print(dim(uGRM))
+
+overlap_samples <- intersect(intersect(rownames(GRM),rownames(HRM)),rownames(uGRM))
+GRM <- GRM[overlap_samples, overlap_samples]
+HRM <- HRM[overlap_samples, overlap_samples]
+uGRM <- uGRM[overlap_samples, overlap_samples]
+print(dim(GRM)); print(dim(HRM)); print(dim(uGRM))
+
+print("Comparing GRM and HRM")
+print(mantel(HRM, GRM))
+print("Comparing HRM and uGRM")
+print(mantel(uGRM, HRM))
+print("Comparing GRM and uGRM")
+print(mantel(uGRM, GRM))
 
 
 ###Get heritabilities

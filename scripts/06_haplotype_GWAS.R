@@ -59,18 +59,25 @@ genic_r <- GRanges(
 phg_genic <-  phgDs |> filterRefRanges(genic_r)
 print(length(phg_genic |> readSamples()))
 
-##Extract haplotypes, save copy
+##Extract haplotypes
 haplotypes <- phg_genic |> readHapIds()
+rownames(haplotypes) <- gsub("_G1", "", rownames(haplotypes))
+haplotypes <- haplotypes[grep("SRGBS|UX", rownames(haplotypes), value=T),]
+rownames(haplotypes) <- gsub("_SRGBS", "", rownames(haplotypes))
+print(rownames(haplotypes)[1:25])
 print(dim(haplotypes))
 
-SNPs <- data.frame(fread(glue("{project_dir}/data/SNPs.tsv")), row.names=1)
+SNPs <- data.frame(fread(glue("{project_dir}/data/SNP.csv")), row.names=1)
 print(dim(SNPs))
 
 ##read in Relationship Matrices, rather than recalculate (especially the haplotype)
 GRM <- read.delim(glue("{PHG_dir}/output/rPHG/GRM.csv"), sep=",", row.names = 1)
 colnames(GRM) <- rownames(GRM)
 HRM <- read.delim(glue("{PHG_dir}/output/rPHG/HRM.csv"), sep=",", row.names = 1)
+HRM <- HRM[grep("SRGBS|UX", rownames(HRM), value=T),grep("SRGBS|UX", colnames(HRM), value=T)]
+rownames(HRM) <- gsub("_SRGBS", "", rownames(HRM))
 colnames(HRM) <- rownames(HRM)
+print(dim(HRM))
 
 ## GWAS function
 ##phenotype is 2-column dataframe, ID and y
@@ -86,11 +93,16 @@ input_agnostic_GWAS <- function(phenotype, K, geno, na_informative = TRUE) {
   if (na_informative == TRUE) {geno[is.na(geno)] <- "NA"}
   K <- K[phenotype$ID, phenotype$ID]
   K <- as.matrix(K)
+  print(dim(phenotype))
+  print(dim(geno))
+  print(dim(K))
   null <- mmer(as.formula(glue("{colnames(phenotype)[2]} ~ 1")), random = ~ vs(ID, Gu = K),
                data = phenotype)
   V  <- as.numeric(null$sigma$`u:ID`) * K + diag(as.numeric(null$sigma$units), nrow(K))
   Vi <- solve(V)
   y_t <- Vi %*% phenotype[,2]
+  print("Size transformed phenotype vector")
+  print(dim(y_t))
   fast_assoc <- function(y_t, G, Vi) {
     pvals <- numeric(ncol(G))
     
@@ -100,8 +112,8 @@ input_agnostic_GWAS <- function(phenotype, K, geno, na_informative = TRUE) {
         pvals[i] <- NA
         next
       }
-      
-      g_t <- Vi %*% as.numeric(g)
+      if (!is.numeric(g)) {g <- as.numeric(as.factor(g))}
+      g_t <- Vi %*% g
       
       fit <- lm(y_t ~ g_t)
       pvals[i] <- summary(fit)$coefficients[2,4]
@@ -113,35 +125,16 @@ input_agnostic_GWAS <- function(phenotype, K, geno, na_informative = TRUE) {
   return(plot_df)
 }
 
-
-gwas_results <- data.frame()
 for (trait in colnames(blues)[-c(1:2)]) {
+  print(trait)
   ph <- blues[,c('ID', trait)]
-  snp_gwas <- input_agnostic_GWAS(ph, GRM, SNPs, na_informative = FALSE)
-  glue("{dir}/ ") 
-  
-
-  snp_gwas$chr <- str_replace(str_replace(snp_gwas$id, "^S", ""), "_\\d*$", "")
-  snp_gwas$pos <- as.numeric(str_replace(snp_gwas$id, "^S\\d[ABD]_", ""))
-  snp_gwas$end = NA; snp_gwas$K <- "SNP"; snp_gwas$trait <- trait; 
-  
+  #snp_gwas <- input_agnostic_GWAS(ph, GRM, SNPs, na_informative = FALSE)
+  #print(dim(snp_gwas))
+  #write.csv(snp_gwas, glue("{PHG_dir}/output/rPHG/GWAS_{trait}_SNP.csv"), row.names=F) 
   
   hap_gwas <- input_agnostic_GWAS(ph, HRM, haplotypes, na_informative = TRUE)
-  # hap_gwas$chr <- str_replace(str_replace(hap_gwas$id, "^chr", ""), "\\:\\d*$", "")
-  hap_gwas <- hap_gwas %>%
-    mutate(haploregion = id) |>
-    separate(haploregion, into = c("chr", "range"), sep = ":") %>%
-    separate(range, into = c("pos", "end"), sep = "-") %>%
-    mutate(chr = sub("^chr", "", chr))
-  
-  hap_gwas$K <- "Haplotype"; hap_gwas$trait <- trait 
-  
-  print(trait); print(dim(snp_gwas)); print(dim(hap_gwas))
-  gwas_results <- rbind(gwas_results, snp_gwas, hap_gwas)
+  print(dim(hap_gwas))
+  write.csv(hap_gwas, glue("{PHG_dir}/output/rPHG/GWAS_{trait}_haplotype.csv"), row.names=F)  
 }
-# 
-# ggplot(plot_df, aes(x = pos, y = -log10(p))) +
-#  geom_point() +
-#  facet_grid(cols = vars(chr))
 
 

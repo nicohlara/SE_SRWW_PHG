@@ -4,7 +4,7 @@
 #SBATCH --partition=atlas
 #SBATCH --nodes=1
 #SBATCH --ntasks=48  
-#SBATCH --job-name="Run haplotype GWAS"
+#SBATCH --job-name="Run accuracy assessment"
 #SBATCH --mail-user=nalara@ncsu.edu  # email address
 #SBATCH --mail-type=END
 #SBATCH --mail-type=FAIL
@@ -19,6 +19,7 @@ module load openblas
 export LD_LIBRARY_PATH=$CONDA_PREFIX/lib/jvm/lib/server:$LD_LIBRARY_PATH
 
 #Rscript /project/guedira_seq_map/nico/pangenome/scripts/05_haplotype_GRM.R
-#Rscript /project/guedira_seq_map/nico/pangenome/scripts/05_accuracy_assessment.R
+Rscript /project/guedira_seq_map/nico/pangenome/scripts/05_accuracy_assessment.R
 #Rscript /project/guedira_seq_map/nico/pangenome/scripts/06_GP_testing.R
-Rscript /project/guedira_seq_map/nico/pangenome/scripts/06_haplotype_GWAS.R
+#Rscript /project/guedira_seq_map/nico/pangenome/scripts/06_haplotype_GWAS.R
+#Rscript /project/guedira_seq_map/nico/pangenome/scripts/07_summary_stats.R
