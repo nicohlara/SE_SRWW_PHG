@@ -117,7 +117,7 @@ ggsave(glue("{dir}/figures/accuracy_assessment.png"), width = 6, height = 8)
 
 
 ##look at GWAS results
-files <- list.files(glue("{dir}/output/GWAS"), full.names=T)
+files <- list.files(glue("{dir}/output/GWAS"), full.names=T, include.dirs =F)
 # tables = lapply(files, read.delim, sep=",")
 # GWAS <- do.call('rbind', tables)
 for (f in files) {
@@ -138,8 +138,9 @@ for (f in files) {
   pname <- tools::file_path_sans_ext(basename(f))
   ggplot(tb, aes(x=pos, y=-log10(p))) +
     geom_point() +
-    facet_grid(cols=vars(chr))
-  ggsave(glue("{dir}/figures/GWAS/{pname}.png", length=9, height=5))
+    facet_grid(cols=vars(chr)) +
+    theme_minimal()
+  ggsave(glue("{dir}/figures/GWAS/{pname}.png"), width=10, height=5)
 }
 
 
