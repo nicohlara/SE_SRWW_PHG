@@ -15,7 +15,7 @@ minfactor <- function(number) {
 
 # chrom_lengths <- read.delim("data/chromosome_lengths.tsv")
 # blocks <- read.delim('../SE_SRWW_PHG/haploblocks/test2.prune.in', header = F) %>%
-blocks <- read.delim('../haploblocks/recombination_thin.prune.in', header = F) %>%
+blocks <- read.delim('haploblocks/recombination_thin.prune.in', header = F) %>%
   separate(V1, c('Chromosome', 'Position', 'ref'))  %>%
   mutate(Position = as.numeric(Position))
 # blocks$color <- as.factor(rep(1:7))

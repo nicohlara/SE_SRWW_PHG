@@ -22,16 +22,19 @@ ugeno@ped$famid <- ifelse(grepl("UX", ugeno@ped$id), str_sub(ugeno@ped$id, 1, 6)
 
 ##Basic filtering for unusable data based on previous parameters tested
 dim(ugeno)
-hist(ugeno@snps$callrate)
-ugeno <- select.snps(ugeno, callrate >= 0.7)
-dim(ugeno)
 ugeno <- select.inds(ugeno, id %in% blues$Entry)
 dim(ugeno)
+hist(ugeno@snps$callrate)
+ugeno <- select.snps(ugeno, callrate >= 0.99)
+dim(ugeno)
 hist(ugeno@snps$N1/nrow(ugeno))
-ugeno <- select.snps(ugeno, N1/nrow(ugeno) < .1) 
+ugeno <- select.snps(ugeno, N1/nrow(ugeno) < 0.05) 
 dim(ugeno)
 hist(ugeno@ped$N1/ncol(ugeno))
-ugeno <- select.inds(ugeno, N1/ncol(ugeno) < 0.1)
+ugeno <- select.inds(ugeno, N1/ncol(ugeno) < 0.05)
+dim(ugeno)
+hist(ugeno@ped$NAs)
+ugeno <- select.inds(ugeno, NAs <= 250)
 dim(ugeno)
 ##LD thin to save processing power
 ugeno <- LD.thin(ugeno, threshold = 0.95, max.dist=50e6)
@@ -40,7 +43,7 @@ dim(ugeno)
 ##Massage SNP into format best suited for fast processing
 # H[is.na(H)] <- "NA"
 G <- as.matrix(ugeno)
-G <- G[, apply(G, 2, function(x) length(unique(x))) > 1]
+G <- G[, apply(G, 2, function(x) length(unique(x))) > 2]
 Gr <- rownames(G); Gc <- colnames(G)
 # H <- sapply(seq_len(ncol(H)), function(j) {
 #   as.integer(factor(H[, j]))

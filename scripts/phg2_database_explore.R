@@ -17,7 +17,8 @@ initPhg(glue("{dir}/phg/lib"))
 chrom_pos <- read.delim(glue("{dir}/data/chrom_info.txt"))
 
 # locCon <- PHGLocalCon(as.character(glue("{dir}/vcf_dbs/hvcf_files")))
-locCon <- PHGLocalCon(as.character(glue("{dir}/hvcf_files")))
+# locCon <- PHGLocalCon(as.character(glue("{dir}/hvcf_files")))
+locCon <- PHGLocalCon(as.character(glue("{dir}/subset_hvcf")))
 
 graph <- locCon |> buildHaplotypeGraph()
 
@@ -295,3 +296,143 @@ sink()
 #   return(GRM)
 # }
 # 
+library(ggplot2)
+
+ref_ranges <- read.delim(glue("{dir}/ref_ranges.bed"), header = F) |>
+  dplyr::rename(start = V2, end = V3) |>
+  mutate(start = start + 1)
+
+refrange <- ref_ranges |> rename(seqnames = V1)
+# refrange <- phgDs |> numberOfHaplotypes(byRefRange=T)
+# refrange <- merge(refrange, ref_ranges, by = c("start", "end"))
+
+refrange <- refrange |>
+  mutate(genic = as.factor(ifelse(grepl("Traes", V4), "genic", "intergenic"))) |>
+  # dplyr::select(seqnames, start, end, width, n_haplo, genic) |>
+  dplyr::select(seqnames, start, end, genic) |>
+  mutate(Position = start - 1,
+         width = end - start,
+         seqnames = factor(gsub("chr", "", seqnames), levels=chrom_pos$Chromosome)) |>
+  rename(BlockStart = start,
+         BlockEnd = end,
+         Chromosome = seqnames) |>
+  filter(Chromosome != 'chrUnknown')
+coln=3
+refrange$arbitrary_color <- as.factor(rep(1:coln, length = nrow(refrange)))
+refrangen <- table(refrange$Chromosome)
+refrangen_df <- data.frame(Chromosome = names(refrangen),
+                           Count = round(as.vector(refrangen)/1e3, 1))
+
+# 
+# ggplot() +
+  # geom_segment(data = refrange,
+  #              aes(x = BlockStart, xend = BlockEnd,
+  #                  y = Chromosome, yend = Chromosome,
+  #                  color = arbitrary_color),
+  #              linewidth = 4, lineend = "butt") +
+#   geom_text(data = refrangen_df,
+#             aes(x = max(refrange$BlockEnd) * 1.02, 
+#                 y = Chromosome, 
+#                 label = Count),
+#             hjust = 0) +
+#   theme_minimal() +
+#   labs(x = "Position (bp)", y = "Chromosome", title="Haploblock sizes")
+# ggsave('figures/phg_genic_intergenic_refranges.png', width=14, height=6,)
+# 
+# ggplot(refrange, aes(x=BlockStart, y = width, color= arbitrary_color)) +
+#   geom_line() +
+#   facet_grid(rows=vars(Chromosome), scale="free_y")
+# 
+# max_width <- max(refrange$width, na.rm = TRUE)
+
+max_x <- max(refrange$BlockEnd, na.rm = TRUE)
+ggplot(refrange) +
+  
+  # Width line
+  geom_line(aes(x = BlockStart,
+                y = width/2e5,
+                color = arbitrary_color)) +
+  
+  # Haploblock segments at baseline
+  # geom_rect(
+  #   aes(xmin = BlockStart,
+  #       xmax = BlockEnd,
+  #       ymin = -n_haplo,
+  #       ymax = 0,
+  #       fill = arbitrary_color)
+  # ) +
+
+  
+  # Count labels per chromosome
+  geom_text(data = refrangen_df,
+            aes(x = max_x * 1.02,
+                y = 5,
+                label = Count),
+            inherit.aes = FALSE,
+            hjust = 0,
+            vjust = 1.2) +
+  
+  facet_grid(rows = vars(Chromosome), scales = "free_y") +
+  
+  coord_cartesian(clip = "off") +
+  
+  theme_minimal() +
+  theme(plot.margin = margin(5.5, 40, 5.5, 5.5)) +
+  
+  labs(x = "Position (bp)",
+       y = "Width",
+       title = "Reference range size and distribution")
+
+
+ggsave('figures/phg_genic_intergenic_refranges.png', width=14, height=16,)
+
+
+plink_refranges <- read.delim("output/plink_haploblocks.bed", header=F) |>
+  dplyr::rename(start = V2, end = V3, seqnames=V1) |>
+  mutate(start = start + 1) |>
+  mutate(genic = as.factor(ifelse(grepl("Traes", V4), "genic", "intergenic"))) |>
+  dplyr::select(seqnames, start, end, genic) |>
+  mutate(Position = start - 1,
+         seqnames = factor(gsub("chr", "", seqnames), levels=chrom_pos$Chromosome)) |>
+  rename(BlockStart = start,
+         BlockEnd = end,
+         Chromosome = seqnames) |>
+  filter(Chromosome != 'chrUnknown')
+coln=3
+plink_refranges$arbitrary_color <- as.factor(rep(1:coln, length = nrow(plink_refranges)))
+plink_refrangen <- table(plink_refranges$Chromosome)
+plink_refranges_df <- data.frame(Chromosome = names(plink_refrangen),
+                           Count = round(as.vector(plink_refrangen), 1))
+
+max_x <- max(plink_refranges$BlockEnd, na.rm = TRUE)
+ggplot(plink_refranges) +
+  geom_segment(data = plink_refranges,
+               aes(x = BlockStart, xend = BlockEnd,
+                   y = Chromosome, yend = Chromosome,
+                   color = arbitrary_color),
+               linewidth = 4, lineend = "butt") +
+
+  
+  
+  # Count labels per chromosome
+  geom_text(data = plink_refranges_df,
+            aes(x = max_x * 1.02,
+                y = 2,
+                label = Count),
+            inherit.aes = FALSE,
+            hjust = 0,
+            vjust = 1.2) +
+  
+  facet_grid(rows = vars(Chromosome), scales = "free_y") +
+  
+  coord_cartesian(clip = "off") +
+  
+  theme_minimal() +
+  theme(plot.margin = margin(5.5, 40, 5.5, 5.5)) +
+  
+  labs(x = "Position (bp)",
+       y = "Width",
+       title = "Reference range size and distribution")
+
+  # dplyr::select(seqnames, start, end, width, n_haplo, genic) |>
+ggsave('figures/phg_plink_refranges.png', width=14, height=6,)

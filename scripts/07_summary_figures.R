@@ -49,7 +49,7 @@ grm_translate <- data.frame(RM = c("GRM", "HRM", "uSNP_GRM"),
                             rename = c("Biparental SNP", "Haplotype", "Unimputed SNP"))
 accuracies$relationship_matrix <- factor(grm_translate$rename[match(accuracies$relationship_matrix, grm_translate$RM)],
           levels=grm_translate$rename)
-
+accuracies <- filter(accuracies, relationship_matrix != "Unimputed SNP")
 
 
 pvals <- accuracies %>%
@@ -99,12 +99,32 @@ p <- ggplot(data=accuracies, aes(x = relationship_matrix, y = prediction_accurac
   facet_grid(trait ~ percent_withheld) +
   geom_hline(data = heritability,
              aes(yintercept= prediction_limit), inherit.aes=F) +
-  scale_y_continuous(limits=c(0.2, 0.9)) 
+  scale_y_continuous(limits=c(0.2, 0.9))
   # title(main="Comparison of GRM accuracy at 25% or 75% withheld data")
 p + geom_text(data = cld_df, aes(x = relationship_matrix, y = 0.7, label = label),
     inherit.aes = FALSE, size = 5, vjust = 0)
 ggsave(glue("{dir}/figures/accuracy_assessment.png"), width = 6, height = 8)
 
+# trait_subset <- c("HD", "Height")
+trait_subset <- c("PM", "WDR")
+p <- ggplot(data=accuracies |> filter(trait %in% trait_subset), aes(x = relationship_matrix, y = prediction_accuracy)) +
+  geom_boxplot() +
+  facet_grid(trait ~ percent_withheld) +
+  geom_hline(data = heritability |> filter(trait %in% trait_subset),
+             aes(yintercept= prediction_limit)) +
+  scale_y_continuous(limits=c(0.2, 0.9)) +
+  ylab("Prediction Accuracy (r2)") +
+  xlab("GRM") +
+  theme_minimal() +
+  theme( axis.text.x = element_text(angle = 30, hjust = 1),
+         axis.text.y = element_text(hjust = 0),
+         panel.border=element_rect(colour="black", fill='transparent', linewidth=0.5)
+  )
+# title(main="Comparison of GRM accuracy at 25% or 75% withheld data")
+p + geom_text(data = cld_df |> filter(trait %in% trait_subset), aes(x = relationship_matrix, y = 0.7, label = label),
+              inherit.aes = FALSE, size = 5, vjust = 0)
+# ggsave(glue("figures/presentation_figures/accuracy_assessment_polygenic.png"), width = 4, height = 4)
+ggsave(glue("figures/presentation_figures/accuracy_assessment_qualitative.png"), width = 4, height = 4)
 
 
 # 
@@ -117,6 +137,61 @@ ggsave(glue("{dir}/figures/accuracy_assessment.png"), width = 6, height = 8)
 
 
 ##look at GWAS results
+rrblup_manhattan <- function(tb, header, sig=5) {
+  
+  library(dplyr)
+  library(ggplot2)
+  
+  # Ensure chromosome is factor in correct order
+  tb <- tb %>%
+    mutate(chr = as.factor(chr)) %>%
+    arrange(chr, pos)
+  
+  # Create cumulative genomic position
+  chr_lengths <- tb %>%
+    group_by(chr) %>%
+    summarise(chr_len = max(pos)) %>%
+    mutate(tot = cumsum(chr_len) - chr_len)
+  
+  tb <- tb %>%
+    left_join(chr_lengths, by = "chr") %>%
+    mutate(pos_cum = pos + tot)
+  
+  # Chromosome centers for x-axis labels
+  axis_df <- tb %>%
+    group_by(chr) %>%
+    summarise(center = (min(pos_cum) + max(pos_cum)) / 2)
+  
+  # Alternate chromosome colors
+  tb$col_group <- as.numeric(as.factor(tb$chr)) %% 2
+  
+  ggplot(tb, aes(x = pos_cum, y = -log10(p))) +
+    
+    geom_point(aes(color = factor(col_group)), size = 1.5) +
+    
+    scale_color_manual(values = c("skyblue", "blue4"), guide = "none") +
+    geom_hline(yintercept = sig, linetype="dotted") +
+    scale_x_continuous(
+      label = axis_df$chr,
+      breaks = axis_df$center
+    ) +
+    ggtitle(header) +
+    labs(
+         x = "Chromosome",
+         y = expression(-log[10](italic(p)))) +
+    
+    theme_classic(base_size = 12) +
+    
+    theme(
+      plot.title = element_text(hjust = 0.5),
+      panel.border = element_rect(colour = "black", fill = NA, linewidth = 0.8),
+      panel.grid = element_blank(),
+      axis.line = element_blank(),
+      axis.ticks = element_line(color = "black"),
+      axis.text.x = element_text(angle = 0, vjust = 0.5)
+    )
+}
+
 files <- list.files(glue("{dir}/output/GWAS"), full.names=T, include.dirs =F)
 # tables = lapply(files, read.delim, sep=",")
 # GWAS <- do.call('rbind', tables)
@@ -130,16 +205,20 @@ for (f in files) {
       mutate(haploregion = id) |>
       separate(haploregion, into = c("chr", "range"), sep = ":") %>%
       separate(range, into = c("pos", "end"), sep = "-") %>%
-      mutate(chr = sub("^chr", "", chr))
+      mutate(chr = sub("^chr", "", chr),
+             pos = as.numeric(pos),
+             end = as.numeric(end))
+    sig_thresh <- -log10(0.5/104192)
   } else {
     tb$chr <- str_replace(str_replace(tb$id, "^S", ""), "_\\d*$", "")
     tb$pos <- as.numeric(str_replace(tb$id, "^S\\d[ABD]_", ""))
+    sig_thresh <- -log10(0.5/31000)
   }
   pname <- tools::file_path_sans_ext(basename(f))
-  ggplot(tb, aes(x=pos, y=-log10(p))) +
-    geom_point() +
-    facet_grid(cols=vars(chr)) +
-    theme_minimal()
+  trait <- strsplit(pname, "_")[[1]][2]
+  
+  rrblup_manhattan(tb, trait, sig=sig_thresh)
+  
   ggsave(glue("{dir}/figures/GWAS/{pname}.png"), width=10, height=5)
 }
 

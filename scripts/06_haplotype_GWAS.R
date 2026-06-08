@@ -98,11 +98,9 @@ input_agnostic_GWAS <- function(phenotype, K, geno, na_informative = TRUE) {
   print(dim(K))
   null <- mmer(as.formula(glue("{colnames(phenotype)[2]} ~ 1")), random = ~ vs(ID, Gu = K),
                data = phenotype)
-  V  <- as.numeric(null$sigma$`u:ID`) * K + diag(as.numeric(null$sigma$units), nrow(K))
-  Vi <- solve(V)
-  y_t <- Vi %*% phenotype[,2]
-  print("Size transformed phenotype vector")
-  print(dim(y_t))
+  # V  <- as.numeric(null$sigma$`u:ID`) * K + diag(as.numeric(null$sigma$units), nrow(K))
+  # Vi <- solve(V)
+  y_t <- null$Vi %*% phenotype[,2]
   fast_assoc <- function(y_t, G, Vi) {
     pvals <- numeric(ncol(G))
     
