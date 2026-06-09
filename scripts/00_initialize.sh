@@ -11,28 +11,41 @@
 
 conda activate phgv2-conda
 
-cd /90daydata/guedira_seq_map/nico/plinkhaplo_phg
-phg=../phgv2_v2.4/bin/phg
+# cd /90daydata/guedira_seq_map/nico/plinkhaplo_phg
+# phg=../phgv2_v2.4/bin/phg
+cd /90daydata/guedira_seq_map/nico/phg_LDblock
+phg=./phg/bin/phg
 
 ##initialize a TileDB instance
-${phg} initdb --db-path vcf_dbs \
-	--gvcf-anchor-gap 10000000 \
-	--hvcf-anchor-gap 10000
+${phg} initdb --db-path vcf_dbs
+# 	--gvcf-anchor-gap 10000000 \
+# 	--hvcf-anchor-gap 10000
 
 mkdir output
 mkdir output/updated_assemblies
 
 ##update FASTA headers
-#${phg} prepare-assemblies \
-#	--keyfile keyfiles data/annotation_keyfile.txt \
-#	--threads 10 \
-#	--output-dir output/updated_assemblies
+update_assembly=output/updated_assemblies
+${phg} prepare-assemblies \
+	--keyfile data/annotation_keyfile.txt \
+	--threads 10 \
+	--output-dir ${update_assembly}
+
+gff=/project/guedira_seq_map/nico/pangenome/output/LD_block_algorithm_haploblocks.gff
+
+##align assemblies
+phg align_assemblies \
+	--align-assemblies \
+	--gff ${gff} \
+	--reference-file ${updated_assemblies}/Ref.fasta \
+	--assembly-file-list data/
+
 
 ##compress updated assemblies
-#phg agc-compress \
-#	--db-path vcf_dbs \
-#	--fasta-list data/assemblies_list.txt \
-#	--reference-file output/updated_assemblies/CS.fa
+# phg agc-compress \
+# 	--db-path vcf_dbs \
+# 	--fasta-list data/assemblies_list.txt \
+# 	--reference-file output/updated_assemblies/CS.fa
 
 #mkdir output/align_assemblies
 ##prepare slurm file for parallel alignments via nextflow
