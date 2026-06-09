@@ -3,10 +3,8 @@ nextflow.enable.dsl=2
 // baseline parameters
 params.basedir = "/90daydata/guedira_seq_map"
 params.fastq_dir = "${params.basedir}/fastq"
-params.keyfile = "/project/guedira_seq_map/nico/SunRILs_population_description/data/keyfiles/SNP_calling_cladoclean_aviti_illumina_20250817.tsv"
-//params.keyfile = "${params.basedir}/nico2/test_keyfile.tsv"
-params.output_dir = "${params.basedir}/nico2/demultiplexed_fastq"
-
+params.keyfile = "/project/guedira_seq_map/nico/pangenome/data/demultiplex_IL02_LA03.tsv"
+params.output_dir = "${params.basedir}/nico2/pangenome_multichrom/IL02_LA03"
 
 workflow {
     // make output directory if it doesn't exist

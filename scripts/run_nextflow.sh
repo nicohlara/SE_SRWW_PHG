@@ -11,6 +11,7 @@
 
 module load miniconda3
 #module load nextflow
+eval "$(command conda shell.bash hook)"
 conda activate /home/nicolas.lara/.conda/envs/imp_2
 
 cd /90daydata/guedira_seq_map/nico2
@@ -18,6 +19,6 @@ cd /90daydata/guedira_seq_map/nico2
 #export _JAVA_OPTIONS="-Xmx350G"
 
 #nextflow scripts/00_vcf_preprocess_combine.nf -resume
-nextflow run 00_demultiplex.nf
+nextflow run /project/guedira_seq_map/nico/pangenome/scripts/00_demultiplex.nf
 
 squeue -j $SLURM_JOBID

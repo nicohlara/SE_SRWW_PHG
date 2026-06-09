@@ -18,9 +18,10 @@ initPhg(glue("{PHG_dir}/../phgv2_v2.4/lib"))
 locCon <- PHGLocalCon(as.character(glue("{PHG_dir}/vcf_dbs/hvcf_files")))
 graph <- locCon |> buildHaplotypeGraph()
 phgDs <- graph |> readPhgDataSet()
+print(dim(phgDs |> readHapIds()))
 
 founders <- grep("exm|gbs|UX|GBS", phgDs |> readSamples(), value=T, invert=T)
-
+print(founders)
 
 ##generate number of haplotypes per haplotype region, summarize
 multimorphic <- phgDs |> numberOfHaplotypes(byRefRange=T) |>
@@ -28,13 +29,14 @@ multimorphic <- phgDs |> numberOfHaplotypes(byRefRange=T) |>
 print(table(multimorphic$n_haplo))
 
 ##extract only relevant regions
-significant_regions <- read.delim(glue("{project_dir}/output/significant_haplotypes.csv"), sep=",")
+significant_regions <- read.delim(glue("{project_dir}/data/significant_haplotypes.csv"), sep=",")
 gr <- GRanges(
   seqnames = significant_regions$seqnames,
   ranges = IRanges(significant_regions$start, significant_regions$end)
 )
 PHG_filter <-  phgDs |> filterRefRanges(gr)
 PHG_filter <- PHG_filter |> filterSamples(c(founders,grep("GBS|UX", phgDs |> readSamples(), value=T)))
+print(dim(PHG_filter |> readHapIds()))
 
 ##rename haplotypes to equal founder calls for easier human analysis
 remap_haplotype <- function(hap_vec, founders) {
@@ -54,7 +56,6 @@ remap_haplotype <- function(hap_vec, founders) {
   mapped <- gsub("_G1", "", mapped)
   return(mapped)
 }
-
 
 hapmat_remapped <- apply(PHG_filter@hapIds, 2, remap_haplotype, founders = paste0(founders, "_G1"))
 rownames(hapmat_remapped) <- gsub("_G1", "", rownames(PHG_filter@hapIds))

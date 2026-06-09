@@ -25,14 +25,14 @@ print(phgDs |> readSamples())
 print(dim(phgDs |> readHapIds()))
 
 ##filter out fixed regions
-multimorphic <- phgDs |> numberOfHaplotypes(byRefRange=T) |> dplyr::filter(n_haplo > 1)
-ranges <- multimorphic |>
-  dplyr::filter(seqnames != 'chrUnknown')
-gr <- GRanges(
-  seqnames = ranges$seqnames,
-  ranges = IRanges(ranges$start, ranges$end)
-  )
-phgDs <-  phgDs |> filterRefRanges(gr)
+#multimorphic <- phgDs |> numberOfHaplotypes(byRefRange=T) |> dplyr::filter(n_haplo > 1)
+#ranges <- multimorphic |>
+#  dplyr::filter(seqnames != 'chrUnknown')
+#gr <- GRanges(
+#  seqnames = ranges$seqnames,
+#  ranges = IRanges(ranges$start, ranges$end)
+#  )
+#phgDs <-  phgDs |> filterRefRanges(gr)
 print(dim(phgDs |> readHapIds()))
 
 ##filter to genic regions

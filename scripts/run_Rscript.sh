@@ -4,7 +4,7 @@
 #SBATCH --partition=atlas
 #SBATCH --nodes=1
 #SBATCH --ntasks=48  
-#SBATCH --job-name="Run accuracy assessment"
+#SBATCH --job-name="Assess haplotype accuracy"
 #SBATCH --mail-user=nalara@ncsu.edu  # email address
 #SBATCH --mail-type=END
 #SBATCH --mail-type=FAIL
@@ -23,3 +23,4 @@ Rscript /project/guedira_seq_map/nico/pangenome/scripts/05_accuracy_assessment.R
 #Rscript /project/guedira_seq_map/nico/pangenome/scripts/06_GP_testing.R
 #Rscript /project/guedira_seq_map/nico/pangenome/scripts/06_haplotype_GWAS.R
 #Rscript /project/guedira_seq_map/nico/pangenome/scripts/07_summary_stats.R
+#Rscript /project/guedira_seq_map/nico/pangenome/scripts/07_extract_haplotype_ranges.R

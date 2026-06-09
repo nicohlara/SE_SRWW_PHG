@@ -9,6 +9,8 @@
 #SBATCH --mail-type=END
 #SBATCH --mail-type=FAIL
 
+module load miniconda3
+source $(conda info --base)/etc/profile.d/conda.sh
 conda activate phgv2-conda
 
 # cd /90daydata/guedira_seq_map/nico/plinkhaplo_phg
@@ -17,28 +19,37 @@ cd /90daydata/guedira_seq_map/nico/phg_LDblock
 phg=./phg/bin/phg
 
 ##initialize a TileDB instance
-${phg} initdb --db-path vcf_dbs
+#${phg} initdb --db-path vcf_dbs
 # 	--gvcf-anchor-gap 10000000 \
 # 	--hvcf-anchor-gap 10000
 
-mkdir output
-mkdir output/updated_assemblies
+#mkdir output
+#mkdir output/updated_assemblies
 
 ##update FASTA headers
-update_assembly=output/updated_assemblies
-${phg} prepare-assemblies \
-	--keyfile data/annotation_keyfile.txt \
-	--threads 10 \
-	--output-dir ${update_assembly}
+updated_assemblies=output/updated_assemblies
+#${phg} prepare-assemblies \
+#	--keyfile data/annotation_keyfile.txt \
+#	--threads 10 \
+#	--output-dir ${updated_assemblies}
 
-gff=/project/guedira_seq_map/nico/pangenome/output/LD_block_algorithm_haploblocks.gff
+#gff=/project/guedira_seq_map/nico/pangenome/output/LD_block_algorithm_haploblocks.gff
+gff=/90daydata/guedira_seq_map/nico/iwgsc_refseqv2.1_gene_annotation_200916/iwgsc_refseqv2.1_annotation_200916_HC.gff3
 
+
+##update chrom names to match throughout
+#for fasta in ${updated_assemblies}/*.fa; do
+#    sed -i '/^>/ s/chr/Chr/g' "$fasta"
+#done
+
+maf_files=output/maf_files
+#mkdir ${maf_files}
 ##align assemblies
-phg align_assemblies \
-	--align-assemblies \
+${phg} align-assemblies \
 	--gff ${gff} \
-	--reference-file ${updated_assemblies}/Ref.fasta \
-	--assembly-file-list data/
+	--reference-file ${updated_assemblies}/Ref.fa \
+	--assembly-file-list data/assemblies_list.txt \
+	-o ${maf_files}
 
 
 ##compress updated assemblies
