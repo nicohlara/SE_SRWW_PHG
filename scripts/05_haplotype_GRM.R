@@ -25,23 +25,24 @@ haploblocks <- haploblocks |>
 min(haploblocks$width); mean(haploblocks$width); max(haploblocks$width)
 
 ##get genic region names
-ref_ranges <- read.delim("/project/guedira_seq_map/nico/pangenome/data/ref_ranges.bed", header = F) |>  
-  dplyr::rename(start = V2, end = V3) |>
-  mutate(start = start + 1)
-haplo_regionames <- merge(haploblocks, ref_ranges, by = c("start", "end"))
-genic_ranges <- haplo_regionames[grep("Traes", haplo_regionames$V4),] |>
-  dplyr::filter(seqnames != 'chrUnknown')
-genic_r <- GRanges(
-  seqnames = genic_ranges$seqnames,
-  ranges = IRanges(genic_ranges$start, genic_ranges$end)
-)
+#ref_ranges <- read.delim("/project/guedira_seq_map/nico/pangenome/data/ref_ranges.bed", header = F) |>  
+#  dplyr::rename(start = V2, end = V3) |>
+#  mutate(start = start + 1)
+#haplo_regionames <- merge(haploblocks, ref_ranges, by = c("start", "end"))
+#genic_ranges <- haplo_regionames[grep("Traes", haplo_regionames$V4),] |>
+#  dplyr::filter(seqnames != 'chrUnknown')
+#genic_r <- GRanges(
+#  seqnames = genic_ranges$seqnames,
+#  ranges = IRanges(genic_ranges$start, genic_ranges$end)
+#)
 
 ##filter PHG haplotypes to genic regions
-phg_genic <-  phgDs |> filterRefRanges(genic_r)
-print(length(phg_genic |> readSamples()))
+#phg_genic <-  phgDs |> filterRefRanges(genic_r)
+#print(length(phg_genic |> readSamples()))
 
 ##Extract haplotypes, save copy
-H <- phg_genic |> readHapIds()
+#H <- phg_genic |> readHapIds()
+H <- phgDs |> readHapIds()
 #write.csv(H, glue("{dir}/output/rPHG/haplotypes.tsv"), quote = F)
 	
 ##Massage haplotypes into format best suited for fast processing

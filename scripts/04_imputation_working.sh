@@ -9,43 +9,55 @@
 #SBATCH --mail-type=END
 #SBATCH --mail-type=FAIL
 
-#to_impute=keyfiles/exome_impute.txt
-#to_impute=keyfiles/exome_round2_GBS_impute.txt
-#to_impute=keyfiles/round2_GBS_impute.txt
-to_impute=keyfiles/IL02_LA03_impute.txt
-project=GBS_founder_fillin
-
+module load miniconda3
+source $(conda info --base)/etc/profile.d/conda.sh
+conda activate phgv2-conda
 
 export _JAVA_OPTIONS="-Xmx350G"
 
-module load miniconda3
-eval "$(command conda shell.bash hook)"
-conda activate /home/nicolas.lara/.conda/envs/phgv2-conda
+cd /90daydata/guedira_seq_map/nico/phg_LDblock
 
-cd /90daydata/guedira_seq_map/nico2/pangenome_multichrom
+##dir locations
+phg=./phg/bin/phg
+updated_assemblies=output/updated_assemblies
+hvcf_dir=output/hvcf_export
+index_dir=output/pangenome_index
+index_prefix=soft7_index
+#mkdir ${hvcf_dir}
+#mkdir ${index_dir}
 
-#phg=phg/bin/phg
-phg=../phgv2_v2.4/bin/phg
+##imputation parameters
+to_impute=data/founder_impute_test.txt
+project=founder_impute_exome_gbs
+read_mapping=output/${project}/read_mappings
+imputed_hvcf=output/${project}/imputed_hvcf
+imputed_snp=output/${project}/imputed_snp
+#mkdir output/${project}
+#mkdir ${read_mapping}
+#mkdir ${imputed_hvcf}
+#mkdir ${imputed_snp}
+
 
 ###imputation prep
+
+##something at the previous step seems a little odd, have to manually move the Ref hvcf out of the directory to proceed.
+#echo "Listing samples"
+#echo ""
 #${phg} list-samples \
 #	--db-path vcf_dbs \
 #	--data-set hvcf \
 #	--output-file output/sample_names_hvcf.txt
 
-hvcf_dir=output/hvcf_export
-#mkdir ${hvcf_dir}
-
+#echo "Exporting vcf"
+#echo ""
 #${phg} export-vcf \
 #	--db-path vcf_dbs \
 #	--dataset-type hvcf \
 #	--sample-file output/sample_names_hvcf.txt \
 #	--output-dir ${hvcf_dir}
 
-index_dir=output/pangenome_index
-index_prefix=soft7_index
-#mkdir ${index_dir}
-
+#echo "Indexing pangenome"
+#echo ""
 #${phg} rope-bwt-index \
 #	--db-path vcf_dbs \
 #	--hvcf-dir ${hvcf_dir} \
@@ -55,10 +67,8 @@ index_prefix=soft7_index
 
 
 ###imputation steps with new data starts here
-
-read_mapping=output/${project}_read_mappings
-#mkdir ${read_mapping}
-#read_mapping=output/read_mappings_SunRILs_GBS
+#echo "Mapping reads"
+#echo ""
 
 #${phg} map-reads \
 #	--hvcf-dir ${hvcf_dir} \
@@ -68,17 +78,15 @@ read_mapping=output/${project}_read_mappings
 #	--threads 5 \
 #	--output-dir ${read_mapping}
 
-imputed_hvcf=output/${project}_imputed_hvcf
-mkdir ${imputed_hvcf}
-#imputed_hvcf=utput/imputed_hvcf_SunRILs_GBS
+echo "Finding paths"
+echo ""
 
-
-${phg} find-paths \
-	--path-keyfile ${read_mapping}/pathKeyFile.txt \
-	--hvcf-dir ${hvcf_dir} \
-	--reference-genome output/updated_assemblies/Ref.fa \
-	--path-type haploid \
-	--output-dir ${imputed_hvcf}
+#${phg} find-paths \
+#	--path-keyfile ${read_mapping}/pathKeyFile.txt \
+#	--hvcf-dir ${hvcf_dir} \
+#	--reference-genome output/updated_assemblies/Ref.fa \
+#	--path-type haploid \
+#	--output-dir ${imputed_hvcf}
 
 for vcf in ${imputed_hvcf}/*.h.vcf; do
 	bgzip $vcf
@@ -89,10 +97,6 @@ ${phg} load-vcf \
 	--vcf-dir ${imputed_hvcf} \
 	--db-path vcf_dbs \
 	--threads 5
-
-#imputed_snp=output/imputed_snp_SunRILs_GBS
-#imputed_snp=output/${project}_imputed_snp
-#mkdir ${imputed_snp}
 
 #${phg} hvcf2gvcf \
 #	--hvcf-dir ${imputed_hvcf} \

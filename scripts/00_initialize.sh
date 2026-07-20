@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --account=guedira_seq_map
-#SBATCH --time=1-00:00:00
-#SBATCH --partition=atlas
+#SBATCH --time=0-12:00:00
+#SBATCH --partition=bigmem
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=48
 #SBATCH --job-name="initialize_phg"
@@ -13,63 +13,82 @@ module load miniconda3
 source $(conda info --base)/etc/profile.d/conda.sh
 conda activate phgv2-conda
 
+export _JAVA_OPTIONS="-Xmx350G"
+
 # cd /90daydata/guedira_seq_map/nico/plinkhaplo_phg
 # phg=../phgv2_v2.4/bin/phg
 cd /90daydata/guedira_seq_map/nico/phg_LDblock
+#mkdir output
+
+
+##dir locations
 phg=./phg/bin/phg
+updated_assemblies=output/updated_assemblies
+maf_files=output/maf_files
+vcf_files=output/vcf_files
+
+#mkdir ${vcf_files}
+
+##input file locations
+assembly_list=data/assemblies_list.txt
+gff=/90daydata/guedira_seq_map/nico/iwgsc_refseqv2.1_gene_annotation_200916/iwgsc_refseqv2.1_annotation_200916_HC.gff3
+bed=/project/guedira_seq_map/nico/pangenome/output/LD_block_algorithm_haploblocks.bed
+
 
 ##initialize a TileDB instance
 #${phg} initdb --db-path vcf_dbs
-# 	--gvcf-anchor-gap 10000000 \
+#	--gvcf-anchor-gap 10000000 \
 # 	--hvcf-anchor-gap 10000
 
-#mkdir output
-#mkdir output/updated_assemblies
-
 ##update FASTA headers
-updated_assemblies=output/updated_assemblies
 #${phg} prepare-assemblies \
 #	--keyfile data/annotation_keyfile.txt \
 #	--threads 10 \
 #	--output-dir ${updated_assemblies}
-
-#gff=/project/guedira_seq_map/nico/pangenome/output/LD_block_algorithm_haploblocks.gff
-gff=/90daydata/guedira_seq_map/nico/iwgsc_refseqv2.1_gene_annotation_200916/iwgsc_refseqv2.1_annotation_200916_HC.gff3
-
 
 ##update chrom names to match throughout
 #for fasta in ${updated_assemblies}/*.fa; do
 #    sed -i '/^>/ s/chr/Chr/g' "$fasta"
 #done
 
-maf_files=output/maf_files
-#mkdir ${maf_files}
 ##align assemblies
-${phg} align-assemblies \
-	--gff ${gff} \
-	--reference-file ${updated_assemblies}/Ref.fa \
-	--assembly-file-list data/assemblies_list.txt \
-	-o ${maf_files}
+#${phg} align-assemblies \
+#	--gff ${gff} \
+#	--reference-file ${updated_assemblies}/Ref.fa \
+#	--assembly-file-list ${assembly_list} \
+#	-o ${maf_files}
 
-
-##compress updated assemblies
-# phg agc-compress \
+#echo "compress updated assemblies"
+#${phg} agc-compress \
 # 	--db-path vcf_dbs \
-# 	--fasta-list data/assemblies_list.txt \
-# 	--reference-file output/updated_assemblies/CS.fa
+# 	--fasta-list ${assembly_list} \
+# 	--reference-file ${updated_assemblies}/Ref.fa
 
-#mkdir output/align_assemblies
-##prepare slurm file for parallel alignments via nextflow
-#phg prepare-slurm-align-file \
-#    --phg-location /90daydata/guedira_seq_map/nico/phgv2_v2.4/bin/phg \
-#    --gff input_data/cs2.1_annotation1B_HC.gff3 \
-#    --reference-file output/updated_assemblies/CS.fa \
-#    --reference-sam output/alignment_files/CS.sam \
-#    --reference-cds-fasta output/alignment_files/ref.cds.fasta \
-#    --assemblies data/assemblies_list.txt \
-#    --ref-max-align-cov 1 \
-#    --query-max-align-cov 1 \
-#    --total-threads 20 \
-#    --output-dir output/align-assemblies \
-#    --slurm-command-file output/slurm_align_file.txt \
-#    -o output/alignment_files
+#echo "convert assemblies to vcf"
+#${phg} create-ref-vcf \
+#	--bed ${bed} \
+#	--reference-file ${updated_assemblies}/Ref.fa \
+#	--reference-name CS \
+#	--db-path vcf_dbs
+
+#echo "get MAF alignments to vcf"
+#${phg} create-maf-vcf \
+#	--db-path vcf_dbs \
+#	--bed ${bed} \
+#	--reference-file ${updated_assemblies}/Ref.fa \
+#	--maf-dir ${maf_files} \
+#	-o ${vcf_files}
+
+###currently breaks on REF
+echo "Redoing MAF metrics"
+${phg} calc-vcf-metrics \
+	--vcf-dir ${vcf_files} \
+	--output ${vcf_files}/VCFMetrics_redo.tsv
+
+
+echo "Load data into DBs"
+${phg} load-vcf \
+	--vcf-dir ${vcf_files} \
+	--db-path vcf_dbs \
+	--threads 6
+
